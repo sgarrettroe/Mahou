@@ -22,7 +22,7 @@ function varargout = data_acquisition_gui(varargin)
 
 % Edit the above text to modify the response to help data_acquisition_gui
 
-% Last Modified by GUIDE v2.5 12-Jun-2012 12:10:04
+% Last Modified by GUIDE v2.5 12-Jun-2012 17:46:40
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -62,6 +62,75 @@ guidata(hObject, handles);
 % uiwait(handles.figure1);
 
 
+global dllinfo USE_DLLS USE_LABMAX labMax;             %%%Could be put into handles
+dllinfo = [];
+USE_DLLS = 0;
+USE_LABMAX = 1;
+labMax = [];
+
+if USE_DLLS,
+  %load dlls here
+end %if USE_DLLS
+
+if USE_LABMAX
+  disp('Initialize LabMax');
+  
+  %set up parameters for communication with the LabMax scope by serial port
+  LABMAX_PORT = 'COM1';
+  LABMAX_BAUD = 115200;
+  LABMAX_PARITY = 'NONE';
+  LABMAX_SBITS = '1';
+  LABMAX_PACE = 'NONE';
+  LABMAX_SERVICE = 'OFF'; 
+  LABMAX_TERMINATOR = {'CR/LF','CR/LF'};
+  %I'm guessing data bits is 8???
+  
+  %see doc serial to see more options also check instrument control
+  %toolbox
+  
+  %find any open com port objects
+  labMax = instrfind('Type', 'serial', 'Port', LABMAX_PORT, 'Tag', '');
+
+  % Create the serial port object if it does not exist
+  % otherwise use the object that was found.
+  if isempty(labMax)
+    labMax = serial(LABMAX_PORT);
+  else
+    fclose(labMax); %close all found objects
+    labMax = labMax(1) %keep only the first
+  end
+  
+  % Connect to instrument object, labMax.
+  fopen(labMax);
+
+  % Configure instrument object, labMax.
+  set(labMax, 'BaudRate', LABMAX_BAUD);
+  set(labMax, 'Terminator', LABMAX_TERMINATOR);
+  
+  % Baud rate
+  labMaxCommandHandshake(labMax, ['SYST:COMM:SER:BAUD ' num2str(LABMAX_BAUD)]);
+  %make sure we are handshaking
+  labMaxCommandHandshake(labMax, 'SYST:COMM:HAND ON');
+  %make meter under remote (computer) control
+  labMaxCommandHandshake(labMax, 'SYST:REM');
+  %turn service requests off because I think they make for some garbage
+  %bits (char(5)) that mess up reading strings
+  labMaxCommandHandshake(labMax, 'SYST:COMM:SER:SERV OFF');
+ 
+  idn = labMaxQueryHandshake(labMax,'*IDN?');
+  if regexp(idn,'^Coherent, Inc')~=1
+    warning('SGRLAB:hardwareTrouble',...
+      sprintf('LabMax communication not okay, turning it off\n'));
+    USE_LABMAX = false;
+  end
+  
+  %check status here should be somehting like 00000884
+  labMaxStatus = labMaxQueryHandshake(labMax,'SYST:STAT?');
+  fprintf(1,'LabMax status %s\n',labMaxStatus);
+  
+end
+   
+
 % --- Outputs from this function are returned to the command line.
 function varargout = data_acquisition_gui_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
@@ -79,6 +148,7 @@ function btnGoCollect_Callback(hObject, eventdata, handles)
 % hObject    handle to btnGoCollect (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+global labMax
 
 %if btnGoCollect == "Running" (ie we are already running) just exit and do nothing
 if strcmpi(get(handles.btnGoCollect,'String'),'Running')
@@ -126,11 +196,11 @@ while (i_scan ~= params.scan_max) && (strcmpi(get(handles.btnStop,'String'),'Sto
       params.scan_max = -1;
       
       %call proc
-      [data,avg_data] = showLabMax(handles,params,data,avg_data,i_scan);
+      [data,avg_data] = showLabMax(labMax,handles,params,data,avg_data,i_scan);
 
     case 'labmax noncolinear ac'
       %do the full AC procedure with the meter
-      [data,avg_data] = scanLabMax(handles,params,data,avg_data,i_scan,hPlots);
+      [data,avg_data] = scanLabMax(labMax,handles,params,data,avg_data,i_scan,hPlots);
 
     otherwise
       %exit with warning
@@ -350,4 +420,26 @@ if get(hObject,'Value')==1
   ylim(handles.axes1,'auto');
 else
   ylim(handles.axes1,get(handles.axes1,'YLim'));
+end
+
+
+% --- Executes during object deletion, before destroying properties.
+function figure1_DeleteFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global USE_LABMAX labMax USE_DLLS dllinfo
+
+if USE_DLLS
+  %clean up dlls here
+  disp('Clean up dlls');
+end
+
+if USE_LABMAX
+  disp('Clean up LabMax');
+  %make meter local
+  labMaxCommandHandshake(labMax,'SYST:LOC');
+  
+  %hang up connection
+  fclose(labMax);
 end
