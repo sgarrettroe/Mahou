@@ -24,7 +24,7 @@ global method;
 
 % Edit the above text to modify the response to help Spectrometer
 
-% Last Modified by GUIDE v2.5 29-Jun-2012 14:31:41
+% Last Modified by GUIDE v2.5 02-Jul-2012 08:32:34
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -69,7 +69,7 @@ method.InitializePlot(handles);
 
 global PARAMS;
 PARAMS.nShots = 1000;
-PARAMS.sample_method = 2;
+PARAMS.dataSource = 0;
 
 % FPAS_Initialize;
 
@@ -119,6 +119,7 @@ end
 
 % Get parameters
 
+PARAMS.dataSource = get(handles.popupDataSource, 'Value')-1;
 PARAMS.nScans = str2num(get(handles.editNumScans, 'String'));
 PARAMS.nShots = str2num(get(handles.editNumShots, 'String'));
 
@@ -134,9 +135,9 @@ try
             break;
         end
     end
-catch
+catch E
     set(handles.pbGo, 'String', 'Go', 'BackgroundColor', 'green');
-    rethrow;
+    rethrow E;
 end
 set(handles.pbGo, 'String', 'Go', 'BackgroundColor', 'green');
 
@@ -286,6 +287,29 @@ function editNumShots_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in popupDataSource.
+function popupDataSource_Callback(hObject, eventdata, handles)
+% hObject    handle to popupDataSource (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns popupDataSource contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from popupDataSource
+
+
+% --- Executes during object creation, after setting all properties.
+function popupDataSource_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to popupDataSource (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');

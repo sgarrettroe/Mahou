@@ -1,11 +1,7 @@
 function sample = FPAS_Sample
 global FPAS PARAMS;
 
-if nargin<1
-    method = 0;
-end
-
-switch FPAS.sample_method
+switch PARAMS.dataSource
     
     %% Really go to the hardware
     case 0
