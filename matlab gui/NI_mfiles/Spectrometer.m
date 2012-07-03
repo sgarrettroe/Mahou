@@ -24,7 +24,7 @@ global method;
 
 % Edit the above text to modify the response to help Spectrometer
 
-% Last Modified by GUIDE v2.5 02-Jul-2012 08:32:34
+% Last Modified by GUIDE v2.5 03-Jul-2012 14:24:23
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -43,6 +43,7 @@ if nargout
 else
     gui_mainfcn(gui_State, varargin{:});
 end
+
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before Spectrometer is made visible.
@@ -53,13 +54,17 @@ function Spectrometer_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to Spectrometer (see VARARGIN)
 
-global scales hRawPlots method;
+global scales hRawPlots method Interferometer_Stage;
 
 % Choose default command line output for Spectrometer
 handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
+
+% Splash Screen
+splash = SplashScreen('Garrett-Roe 2D-IR Spectrometer', 'splash_screen.jpg');
+splash.addText(30,50, 'Garrett-Roe 2D-IR Spectrometer', 'FontSize', 30, 'Color', [0 0 0.6] )
 
 scales.ch32 = [0:31];
 
@@ -71,6 +76,7 @@ global PARAMS;
 PARAMS.nShots = 1000;
 PARAMS.dataSource = 0;
 
+Interferometer_Stage = PI_TranslationStage('COM4', '');
 % FPAS_Initialize;
 
 % The Raw Data plot is the same for every method.
@@ -86,6 +92,8 @@ set(handles.axesRawData, 'XLim', [1, 32]);
 
 % UIWAIT makes Spectrometer wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
+pause(5);
+delete(splash);
 
 % --- Outputs from this function are returned to the command line.
 function varargout = Spectrometer_OutputFcn(hObject, eventdata, handles)
@@ -116,6 +124,8 @@ end
 PARAMS.dataSource = get(handles.popupDataSource, 'Value')-1;
 PARAMS.nScans = str2num(get(handles.editNumScans, 'String'));
 PARAMS.nShots = str2num(get(handles.editNumShots, 'String'));
+PARAMS.start  = str2num(get(handles.editStart, 'String'));
+PARAMS.stop   = str2num(get(handles.editStop, 'String'));
 
 % FPAS_Initialize;          % FPAS Setup uses number of shots
 method.InitializeData(handles);
@@ -140,7 +150,6 @@ function FileMenu_Callback(hObject, eventdata, handles)
 % hObject    handle to FileMenu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
 
 % --------------------------------------------------------------------
 function OpenMenuItem_Callback(hObject, eventdata, handles)
@@ -171,7 +180,8 @@ if strcmp(selection,'No')
     return;
 end
 
-delete(handles.figure1)
+delete(Interferometer_Stage);
+delete(handles.figure1);
 
 % --- Executes on selection change in popupmenu1.
 function popupmenu1_Callback(hObject, eventdata, handles)
@@ -304,6 +314,51 @@ function popupDataSource_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+function editStart_Callback(hObject, eventdata, handles)
+% hObject    handle to editStart (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editStart as text
+%        str2double(get(hObject,'String')) returns contents of editStart as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editStart_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editStart (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function editStop_Callback(hObject, eventdata, handles)
+% hObject    handle to editStop (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editStop as text
+%        str2double(get(hObject,'String')) returns contents of editStop as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editStop_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editStop (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
