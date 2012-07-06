@@ -20,11 +20,9 @@ function varargout = Spectrometer(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-global method;
-
 % Edit the above text to modify the response to help Spectrometer
 
-% Last Modified by GUIDE v2.5 03-Jul-2012 14:24:23
+% Last Modified by GUIDE v2.5 06-Jul-2012 10:10:21
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -76,8 +74,8 @@ global PARAMS;
 PARAMS.nShots = 1000;
 PARAMS.dataSource = 0;
 
-Interferometer_Stage = PI_TranslationStage('COM4', '');
-% FPAS_Initialize;
+Interferometer_Stage = PI_TranslationStage('COM4', 0.00015, 'editMotor1');
+FPAS_Initialize;
 
 % The Raw Data plot is the same for every method.
 hRawPlots(1) = plot(handles.axesRawData, scales.ch32, zeros(1, 32), 'r');
@@ -86,7 +84,7 @@ hold(handles.axesRawData, 'on');
 hRawPlots(2) = plot(handles.axesRawData, scales.ch32, zeros(1, 32), 'g');
 set(hRawPlots(2),'XDataSource', 'scales.ch32', 'YDataSource','sample.mean.pixels([33:64])');
 hRawPlots(3) = plot(handles.axesRawData, scales.ch32, zeros(1, 32), 'b');
-set(hRawPlots(3),'XDataSource', 'scales.ch32', 'YDataSource','sample.noise./1000');     % @@@ will have to fix this scale factor
+set(hRawPlots(3),'XDataSource', 'scales.ch32', 'YDataSource','sample.noise*10^get(handles.sliderNoiseGain, ''Value'')');     % @@@ will have to fix this scale factor
 hold(handles.axesRawData, 'off');
 set(handles.axesRawData, 'XLim', [1, 32]);
 
@@ -124,8 +122,8 @@ end
 PARAMS.dataSource = get(handles.popupDataSource, 'Value')-1;
 PARAMS.nScans = str2num(get(handles.editNumScans, 'String'));
 PARAMS.nShots = str2num(get(handles.editNumShots, 'String'));
-PARAMS.start  = str2num(get(handles.editStart, 'String'));
-PARAMS.stop   = str2num(get(handles.editStop, 'String'));
+PARAMS.start  = str2double(get(handles.editStart, 'String'));
+PARAMS.stop   = str2double(get(handles.editStop, 'String'));
 
 % FPAS_Initialize;          % FPAS Setup uses number of shots
 method.InitializeData(handles);
@@ -133,8 +131,11 @@ method.InitializeData(handles);
 set(handles.pbGo, 'String', 'Stop', 'BackgroundColor', [1.0 0.0 0.0]);
 
 try
-    for ii=1:PARAMS.nScans
+    ii = 1;
+    while ii<=PARAMS.nScans || PARAMS.nScans==-1
+        set(handles.textScanNumber, 'String', sprintf('Scan # %i', ii));
         method.Scan(handles);
+        ii = ii+1;
         if strcmp(get(handles.pbGo, 'String'), 'Go')~=0
             break;
         end
@@ -223,12 +224,13 @@ function popupMethods_Callback(hObject, eventdata, handles)
 
 global method;
 
-delete(method);
 switch get(handles .popupMethods, 'Value')
     case 1
         newmethod = Method_RawData;
     case 2
         newmethod = Method_Spectrum;
+    case 3
+        newmethod = Method_2DScan;
     otherwise
         error('Nonexistent data acquisition method selected');
 end
@@ -249,7 +251,6 @@ function popupMethods_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 
 function editNumScans_Callback(hObject, eventdata, handles)
@@ -363,3 +364,88 @@ function editStop_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on slider movement.
+function sliderNoiseGain_Callback(hObject, eventdata, handles)
+% hObject    handle to sliderNoiseGain (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+
+
+% --- Executes during object creation, after setting all properties.
+function sliderNoiseGain_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to sliderNoiseGain (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: slider controls usually have a light gray background.
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+
+function editMotor1_Callback(hObject, eventdata, handles)
+% hObject    handle to editMotor1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editMotor1 as text
+%        str2double(get(hObject,'String')) returns contents of editMotor1 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editMotor1_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editMotor1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pbMotor1Reset.
+function pbMotor1Reset_Callback(hObject, eventdata, handles)
+% hObject    handle to pbMotor1Reset (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global Interferometer_Stage;
+
+Interferometer_Stage.SetCenter;
+
+
+% --- Executes on button press in pbMotor1Go.
+function pbMotor1Go_Callback(hObject, eventdata, handles)
+% hObject    handle to pbMotor1Go (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global Interferometer_Stage;
+
+Interferometer_Stage.MoveTo(handles, str2double(get(handles.editMotor1, 'String')), 500, 0, 0);
+
+
+% --- Executes on button press in pbMotor1Dn.
+function pbMotor1Dn_Callback(hObject, eventdata, handles)
+% hObject    handle to pbMotor1Dn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global Interferometer_Stage;
+
+Interferometer_Stage.MoveTo(handles, -10.0, 100, 1, 0);
+
+% --- Executes on button press in pbMotor1Up.
+function pbMotor1Up_Callback(hObject, eventdata, handles)
+% hObject    handle to pbMotor1Up (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+global Interferometer_Stage;
+
+Interferometer_Stage.MoveTo(handles, 10.0, 100, 1, 0);

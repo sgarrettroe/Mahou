@@ -27,7 +27,7 @@ classdef Method_Spectrum < handle
             end
         end
 
-        function InitializeData(obj, handles)
+        function InitializeData(obj, ~)
         end
         
         function Scan(obj, handles)

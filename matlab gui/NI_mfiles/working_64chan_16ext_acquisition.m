@@ -24,7 +24,7 @@ DAQmxResetDevice(lib,'Dev1');
 %propteries of the array detector
 nPixels = 64;
 nExtInputs = 16;
-nShots = 1; %number of laser shots to acquire
+nShots = 5; %number of laser shots to acquire
 maxChan = 256; %the number of channels written to the FIFO buffer in the FPAS
 
 % for later use the total number of channels from the electronics (not the
@@ -56,7 +56,7 @@ DAQmxCfgBurstHandshakingTimingExportClock(lib,hTask,...
 
 %% set input buffer size
 bufSizeInSamps = sampsPerChan*numchan;
-DAQmxCfgInputBuffer(lib,hTask,bufSize);
+DAQmxCfgInputBuffer(lib,hTask,bufSizeInSamps);
 
 %% set DMA transfer
 DAQmxSetDIDataXferMech(lib,hTask,chanName,DAQmx_Val_DMA);
@@ -112,7 +112,8 @@ hmm = reshape(hmm,maxInd,nShots);
 %use ind to sort the data
 IND = repmat(ind,1,nShots); %this only needs to happen once per scan
 data = zeros(size(IND)); %initialize size of array (once per scan)
-data = hmm(IND);
+%data = hmm(IND);
+data = hmm(ind,1:nShots);
 
 % extract array part and ext channels part
 array = double(data(1:nPixels,:)); %the first 64 rows

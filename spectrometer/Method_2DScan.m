@@ -14,32 +14,33 @@ classdef Method_2DScan < handle
         end
 
         function InitializePlot(obj, handles)
-            obj.hPlot = contour(plot_data, 16);
+            obj.hPlot = contourf(obj.plot_data, 16);
             set(obj.hPlot,'DataSource', 'method.PlotData(1)');
+            colormap(handles.axesMain, 'Jet');
 %            set(handles.axesMain, 'XLim', [1, 32]);
         end
 
         function value = PlotData(obj, N)
             switch N
                 case 1
-                    value = objplot_data
+                    value = obj.plot_data;
                 otherwise
                     error('Unknown plot data index');
             end
         end
 
-        function InitializeData(obj, handles)
+        function InitializeData(obj, ~)
             obj.plot_data = zeros(32, 32);
             obj.mean_data = zeros(32, 32);
         end
 
         function Scan(obj, handles)
-            global method PARAMS Interferometer_Stage;
+            global PARAMS Interferometer_Stage;
             for ii = 1:PARAMS.nScans;
                 step = (PARAMS.stop-PARAMS.start)/31;
                 jj = 1;
                 for lambda = PARAMS.start:step:PARAMS.stop
-                    Interferemeter_Stage.MoveTo(handles, lambda, 0, 0);
+                    Interferometer_Stage.MoveTo(handles, lambda, 50, 0, 0);
                     sample = FPAS_Sample;
                     obj.plot_data(jj,:) = Log10(sample.mean(33:64)./sample.mean(1:32));
                     refreshdata(obj.hPlot, 'caller');
@@ -50,7 +51,7 @@ classdef Method_2DScan < handle
                 obj.plot_data = fft(obj.plot_data);
                 refreshdata(obj.hPlot, 'caller');
                 drawnow;
-                Interferemeter_Stage.MoveTo(handles, PARAMS.start, 0, 1);
+                Interferometer_Stage.MoveTo(handles, PARAMS.start, 50, 0, 1);
                 pause(1.0);
                 obj.mean_data = ((obj.mean_data*ii)+obj.plot_data)/(ii+1);
             end
