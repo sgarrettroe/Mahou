@@ -3,14 +3,13 @@ classdef Method_Basic2DScan < handle
     properties
         hPlot;
         plot_data;
-        mean_data;
+        sample;
     end
      
     methods
         
-        function obj = Method_2DScan
+        function obj = Method_Basic2DScan
             obj.plot_data = zeros(32, 32);
-            obj.mean_data = zeros(32, 32);
         end
 
         function InitializePlot(obj, handles)
@@ -32,6 +31,7 @@ classdef Method_Basic2DScan < handle
         function InitializeData(obj, ~)
             obj.plot_data = zeros(32, 32);
             obj.mean_data = zeros(32, 32);
+            % Initialize sample to zeros.
         end
 
         function Scan(obj, handles)
@@ -40,10 +40,12 @@ classdef Method_Basic2DScan < handle
             jj = 1;
             for lambda = PARAMS.start:step:PARAMS.stop
                 Interferometer_Stage.MoveTo(handles, lambda, 50, 0, 0);
-                sample = FPAS_Sample;
-                obj.plot_data(jj,:) = Log10(sample.mean(33:64)./sample.mean(1:32));
+                FPAS_Sample(0);
+                obj.sample = FPAS_Sample(1);
+                obj.measurement_sample = FPAS_Sample(1);
+                obj.plot_data(jj,:) = Log10(measurement_sample.mean(33:64)./measurement_sample.mean(1:32));
                 refreshdata(obj.hPlot, 'caller');
-                RefreshRawData(handles, sample);
+                RefreshRawData(handles);
                 drawnow;
                 jj = jj+1;
             end
@@ -58,7 +60,11 @@ classdef Method_Basic2DScan < handle
             drawnow;
         end
         
-        function Save(obj, filename)
+        function noise = GetNoise(obj)
+            noise = obj.sample.abs_noise;
+        end
+        
+       function Save(obj, filename)
             save(filename, obj.plot_data);
         end
 

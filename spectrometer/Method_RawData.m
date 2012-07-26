@@ -1,9 +1,8 @@
 classdef Method_RawData < handle
     
-    properties
+    properties (SetAccess = private)
         hPlots;
         sample;
-        noiseGain;
     end
      
     methods
@@ -12,7 +11,6 @@ classdef Method_RawData < handle
             obj.sample.mean.pixels = zeros(32, 1000);
             obj.sample.mean.external = zeros(16, 1000);
             obj.sample.noise = zeros(32, 1);
-            obj.noiseGain = 1;
         end
 
         function InitializePlot(obj, handles)
@@ -30,19 +28,24 @@ classdef Method_RawData < handle
         end
 
         function value = PlotData(obj, N)
+            global PARAMS;
             switch N
                 case 1
                     value = obj.sample.mean.pixels(1:32);
                 case 2
                     value = obj.sample.mean.pixels(33:64);
                 case 3
-                    value = obj.sample.noise*obj.noiseGain;
+                    value = obj.sample.noise*PARAMS.noiseGain;
                 otherwise
                     error('Unknown plot data index');
             end
         end
 
         function InitializeData(obj, ~)
+            global PARAMS;
+            obj.sample.mean.pixels = zeros(32, PARAMS.nShots);
+            obj.sample.mean.external = zeros(16, PARAMS.nShots);
+            obj.sample.noise = zeros(32, 1);
         end
         
         function Scan(obj, handles)
@@ -50,17 +53,17 @@ classdef Method_RawData < handle
             % know about the global instance, but I can't find a way around
             % it. DAC. 2012/06/28
             global method scales;
-            obj.sample = FPAS_Sample;
-            obj.noiseGain = 10^get(handles.sliderNoiseGain, 'Value');
-            refreshdata(obj.hPlots, 'caller');
-            RefreshRawData(handles, obj.sample);
-            drawnow;
+            FPAS_Sample(0);
+            obj.sample = FPAS_Sample(1);
+        end
+        
+        function noise = GetNoise(obj)
+            noise = obj.sample.abs_noise;
         end
         
         function Save(obj, filename)
             save(filename, obj.sample);
         end
-        
 
     end
 end

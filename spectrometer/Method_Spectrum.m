@@ -1,13 +1,13 @@
 classdef Method_Spectrum < handle
-    
+
     properties
         hPlots;
         sample;
     end
-     
+
     methods
-        
-       function obj = Method_Spectrum
+
+        function obj = Method_Spectrum
             obj.sample.mOD = zeros(32, 1);
         end
 
@@ -34,17 +34,18 @@ classdef Method_Spectrum < handle
             % Note: it is an object-oriented nightmare for this class to
             % know about the global instance, but I can't find a way around
             % it. DAC. 2012/06/28
-            global method scales;
-            obj.sample = FPAS_Sample;
-            refreshdata(obj.hPlots, 'caller');
-            RefreshRawData(handles, obj.sample);
-            drawnow;
+            FPAS_Sample(0);
+            obj.sample = FPAS_Sample(1);
+            
+        end
+        
+        function noise = GetNoise(obj)
+            noise = obj.sample.abs_noise;
         end
         
         function Save(obj, filename)
             save(filename, obj.sample);
         end
-        
 
     end
 end

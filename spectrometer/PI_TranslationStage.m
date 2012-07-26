@@ -12,11 +12,13 @@ classdef PI_TranslationStage < hgsetget
         object;
         gui_object;
         ID;
+        initialized;
     end
         
     methods
         
         function obj = PI_TranslationStage(port, scale, gui_object_name)
+            obj.initialized = 0;
             obj.center = 0;
             obj.scale = scale;
             obj.comPort = port;
@@ -43,32 +45,38 @@ classdef PI_TranslationStage < hgsetget
             set(obj.object, 'BaudRate', obj.baud);
             set(obj.object, 'Terminator', obj.terminator);
 
-            % %%
-            obj.ID = obj.sendPIMotorCommand('*IDN?', 1);
+            try
+                % %%
+                obj.ID = obj.sendPIMotorCommand('*IDN?', 1);
 
-            [nums ~] = sscanf(obj.sendPIMotorCommand('TMN?', 1), '%i=%f');
-            obj.minimum = nums(2)/obj.scale;
-            [nums ~] = sscanf(obj.sendPIMotorCommand('TMX?', 1), '%i=%f');
-            obj.maximum = nums(2)/obj.scale;
-            
-            %% reference move to negative limit
-            obj.sendPIMotorCommand('RON 1 1', 0);
-            obj.sendPIMotorCommand('SVO 1 1', 0);
-            obj.sendPIMotorCommand('VEL 1 0.5', 0);
-            obj.sendPIMotorCommand('FNL 1', 0);
+                [nums ~] = sscanf(obj.sendPIMotorCommand('TMN?', 1), '%i=%f');
+                obj.minimum = nums(2)/obj.scale;
+                [nums ~] = sscanf(obj.sendPIMotorCommand('TMX?', 1), '%i=%f');
+                obj.maximum = nums(2)/obj.scale;
 
-            %Wait until motor gets to limit.
-            while 1==1
-                status = obj.sendPIMotorCommand('SRG? 1 1', 1);
-                num = uint16(hex2dec(status(7:end-1)));
-                if bitand(num, hex2dec('A000'))==hex2dec('8000')
-                    break;
-                else
-                    pause(0.1);
+                % reference move to negative limit
+                obj.sendPIMotorCommand('RON 1 1', 0);
+                obj.sendPIMotorCommand('SVO 1 1', 0);
+                obj.sendPIMotorCommand('VEL 1 0.5', 0);
+                obj.sendPIMotorCommand('FNL 1', 0);
+
+                %Wait until motor gets to limit.
+                while 1==1
+                    status = obj.sendPIMotorCommand('SRG? 1 1', 1);
+                    num = uint16(hex2dec(status(7:end-1)));
+                    if bitand(num, hex2dec('A000'))==hex2dec('8000')
+                        break;
+                    else
+                        pause(0.1);
+                    end
                 end
+                obj.initialized = 1;
+            catch
+                warning('Spectrometer:Interferometer', 'Cannot find translation stage.  Entering simulation mode.');
             end
         end
 
+        %%
         function delete(obj)
             fclose(obj.object);
         end
@@ -107,20 +115,26 @@ classdef PI_TranslationStage < hgsetget
 
             if ~strcmp(obj.gui_object, '')
                 h = eval(sprintf('handles.%s', obj.gui_object));
-                set(h, 'String', num2str(obj.getPosition));
+                set(h, 'String', num2str(obj.GetPosition));
             end
         end
 
         function position = GetPosition(obj)
-            result = sendPIMotorCommand('POS?', 1);
-            [nums ~] = sscanf(result, '%i=%f');
-            position = nums(2)/obj.scale+obj.center;
+            if obj.initialized
+                result = obj.sendPIMotorCommand('POS?', 1);
+                [nums ~] = sscanf(result, '%i=%f');
+                position = nums(2)/obj.scale+obj.center;
+            else
+                position = 0;
+            end
         end
 
         function SetCenter(obj)
-            result = sendPIMotorCommand('POS?', 1);
-            [nums ~] = sscanf(result, '%i=%f');
-            obj.center = nums(2)/obj.scale;
+            if obj.initialized
+                result = sendPIMotorCommand('POS?', 1);
+                [nums ~] = sscanf(result, '%i=%f');
+                obj.center = nums(2)/obj.scale;
+            end
         end
         
         function Halt(obj)

@@ -15,7 +15,7 @@ FPAS.nSampsPerChan = FPAS.nMaxChan/2*PARAMS.nShots+1; %nChan/2+1; %total number 
 FPAS.lib = 'myni';	% library alias
 if ~libisloaded(FPAS.lib)
     disp('Matlab: Load nicaiu.dll')
-    funclist = loadlibrary('nicaiu.dll','C:\Program Files (x86)\National Instruments\NI-DAQ\DAQmx ANSI C Dev\include\nidaqmx.h','alias',FPAS.lib);
+    loadlibrary('nicaiu.dll','C:\Program Files (x86)\National Instruments\NI-DAQ\DAQmx ANSI C Dev\include\nidaqmx.h','alias',FPAS.lib);
     %if you do NOT have nicaiu.dll and nidaqmx.h
     %in your Matlab path,add full pathnames or copy the files.
     %libfunctions(FPAS.lib,'-full') % use this to show the... 
@@ -30,8 +30,14 @@ disp('Matlab: dll loaded')
 disp('done')
 
 %% reset device
-devName = 'Dev1'; %as defined in NI MAX program
-DAQmxResetDevice(FPAS.lib,'Dev1');
+%devName = 'Dev1'; %as defined in NI MAX program
+FPAS.initialized = 0;
+try 
+    DAQmxResetDevice(FPAS.lib,'Dev1');
+    FPAS.initialized = 0;
+catch
+    warning('Spectrometer:FPAS', 'FPAS system not found.  Entering simulation mode.');
+end
 
 %% create task
 
@@ -39,10 +45,10 @@ DAQmxResetDevice(FPAS.lib,'Dev1');
 % same as the number of digital input/output channels, which is just 1)
 %nChan = FPAS.nPixels + FPAS.nExtInputs;
 
-lines = {'Dev1/line0:31'};
-taskName = '';	% ?
-chanName = {''};	% recommended to avoid problems
-lineGrouping = NICONST.DAQmx_Val_ChanForAllLines; % One Channel For All Lines
+%lines = {'Dev1/line0:31'};
+%taskName = '';	% ?
+%chanName = {''};	% recommended to avoid problems
+%lineGrouping = NICONST.DAQmx_Val_ChanForAllLines; % One Channel For All Lines
 
 % [FPAS.hTask,FPAS.nChan] = DAQmxCreateDIChan(FPAS.lib,lines,lineGrouping,taskName,chanName);
 % %here numchan is the number of digital input channels, i.e. just 1

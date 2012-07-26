@@ -1,0 +1,8 @@
+# depslib dependency file v1.0
+1342107861 source:c:\development\mahou shoujo\lpt tester\test\main.cpp
+	<iostream>
+	<dos.h>
+	<stdio.h>
+	<conio.h>
+	<io.h>
+

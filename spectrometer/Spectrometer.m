@@ -22,7 +22,7 @@ function varargout = Spectrometer(varargin)
 
 % Edit the above text to modify the response to help Spectrometer
 
-% Last Modified by GUIDE v2.5 06-Jul-2012 10:10:21
+% Last Modified by GUIDE v2.5 19-Jul-2012 14:08:09
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -73,28 +73,38 @@ method.InitializePlot(handles);
 global PARAMS;
 PARAMS.nShots = 1000;
 PARAMS.dataSource = 0;
+PARAMS.noiseGain = 1;
 
 global IO;
 IO = IO_Interface;
-IO.OpenClockGate();
+IO.CloseClockGate();
 
-%Interferometer_Stage = PI_TranslationStage('COM4', 0.00015, 'editMotor1');
-%FPAS_Initialize;
+Interferometer_Stage = PI_TranslationStage('COM3', 0.00015, 'editMotor1');
+FPAS_Initialize;
 
 % The Raw Data plot is the same for every method.
 hRawPlots(1) = plot(handles.axesRawData, scales.ch32, zeros(1, 32), 'r');
-set(hRawPlots(1),'XDataSource', 'scales.ch32', 'YDataSource','sample.mean.pixels([1:32])');
+set(hRawPlots(1),'XDataSource', 'scales.ch32', 'YDataSource','method.sample.mean.pixels([1:32])');
 hold(handles.axesRawData, 'on');
 hRawPlots(2) = plot(handles.axesRawData, scales.ch32, zeros(1, 32), 'g');
-set(hRawPlots(2),'XDataSource', 'scales.ch32', 'YDataSource','sample.mean.pixels([33:64])');
+set(hRawPlots(2),'XDataSource', 'scales.ch32', 'YDataSource','method.sample.mean.pixels([33:64])');
 hRawPlots(3) = plot(handles.axesRawData, scales.ch32, zeros(1, 32), 'b');
-set(hRawPlots(3),'XDataSource', 'scales.ch32', 'YDataSource','sample.noise*10^get(handles.sliderNoiseGain, ''Value'')');     % @@@ will have to fix this scale factor
+set(hRawPlots(3),'XDataSource', 'scales.ch32', 'YDataSource','method.sample.noise*PARAMS.noiseGain');     % @@@ will have to fix this scale factor
 hold(handles.axesRawData, 'off');
 set(handles.axesRawData, 'XLim', [1, 32]);
 
+%Initialize matrix that determines what parameters are enabled for what
+% method.  Rows are methods in the same order as in drop-down, columns
+% are parameters in same order as on GUI.
+
+global PARAMETER_MAP;
+PARAMETER_MAP = { 'on',  'on',  'on', 'off', 'off', 'off', 'off'; ...
+                  'on',  'on',  'on', 'off', 'off', 'off', 'off'; ...
+                  'on',  'on', 'off',  'on',  'on',  'on',  'on'; };
+EnableParameters(handles);
+
 % UIWAIT makes Spectrometer wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-pause(5);
 delete(splash);
 
 % --- Outputs from this function are returned to the command line.
@@ -113,7 +123,7 @@ function pbGo_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global method PARAMS;
+global method PARAMS IO scales;
 
 % Called recursively if scan is running
 if ~strcmp(get(handles.pbGo, 'String'), 'Go')
@@ -124,12 +134,13 @@ end
 % Get parameters
 
 PARAMS.dataSource = get(handles.popupDataSource, 'Value')-1;
-PARAMS.nScans = str2num(get(handles.editNumScans, 'String'));
-PARAMS.nShots = str2num(get(handles.editNumShots, 'String'));
+PARAMS.nScans = str2double(get(handles.editNumScans, 'String'));
+PARAMS.nShots = str2double(get(handles.editNumShots, 'String'));
 PARAMS.start  = str2double(get(handles.editStart, 'String'));
 PARAMS.stop   = str2double(get(handles.editStop, 'String'));
+PARAMS.speed  = str2double(get(handles.editSpeed, 'String'));
 
-% FPAS_Initialize;          % FPAS Setup uses number of shots
+FPAS_Initialize;          % FPAS Setup uses number of shots
 method.InitializeData(handles);
 
 set(handles.pbGo, 'String', 'Stop', 'BackgroundColor', [1.0 0.0 0.0]);
@@ -140,14 +151,20 @@ try
         set(handles.textScanNumber, 'String', sprintf('Scan # %i', ii));
         method.Scan(handles);
         ii = ii+1;
+        refreshdata(handles.axesMain, 'caller');
+        refreshdata(handles.axesRawData, 'caller');
+        set(handles.textNoise, 'String', num2str(method.GetNoise, '%.3f'));
+        drawnow;
         if strcmp(get(handles.pbGo, 'String'), 'Go')~=0
             break;
         end
     end
 catch E
+    IO.CloseClockGate();
     set(handles.pbGo, 'String', 'Go', 'BackgroundColor', 'green');
     rethrow(E);
 end
+
 set(handles.pbGo, 'String', 'Go', 'BackgroundColor', 'green');
 
 % --------------------------------------------------------------------
@@ -234,7 +251,7 @@ switch get(handles .popupMethods, 'Value')
     case 2
         newmethod = Method_Spectrum;
     case 3
-        newmethod = Method_2DScan;
+        newmethod = Method_2DScan_SoftPhasing;
     otherwise
         error('Nonexistent data acquisition method selected');
 end
@@ -242,6 +259,7 @@ end
 % If we get here, we know that a new method has been instantiated
 delete(method);
 method = newmethod;
+EnableParameters(handles);
 method.InitializePlot(handles)
 
 % --- Executes during object creation, after setting all properties.
@@ -379,6 +397,8 @@ function sliderNoiseGain_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
+global PARAMS;
+PARAMS.noiseGain = 10^get(handles.sliderNoiseGain, 'Value');
 
 % --- Executes during object creation, after setting all properties.
 function sliderNoiseGain_CreateFcn(hObject, eventdata, handles)
@@ -453,3 +473,49 @@ function pbMotor1Up_Callback(hObject, eventdata, handles)
 global Interferometer_Stage;
 
 Interferometer_Stage.MoveTo(handles, 10.0, 100, 1, 0);
+
+
+
+function editSpeed_Callback(hObject, eventdata, handles)
+% hObject    handle to editSpeed (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editSpeed as text
+%        str2double(get(hObject,'String')) returns contents of editSpeed as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editSpeed_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editSpeed (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function editBinSize_Callback(hObject, eventdata, handles)
+% hObject    handle to editBinSize (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editBinSize as text
+%        str2double(get(hObject,'String')) returns contents of editBinSize as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editBinSize_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editBinSize (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

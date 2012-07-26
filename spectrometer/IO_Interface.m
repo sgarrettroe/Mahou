@@ -1,43 +1,43 @@
 classdef IO_Interface < handle
     
     properties (SetAccess = private)
-        libname;
-        lib;
-        lpt1_port;
+        dio;
+        active;
     end
     
     methods
         
         function obj = IO_Interface
-            obj.libname = 'inpoutx64';
-            if ~libisloaded(obj.libname)
-                obj.lib = loadlibrary(obj.libname);
-                obj.lpt1_port = hex2dec('0378');
-                CloseClockGate(obj);
+            obj.active = 0;
+            try 
+                obj.dio = digitalio('nidaq', 'Dev2');
+                obj.active = 1;
+            catch
+                warning('Spectrometer:DIO', 'Digital I/O module not found.  Entering simulation mode');
             end
+            if obj.active
+                addline(obj.dio, 7, 1, 'out');      % Port 1 bit 7
+            else
+            end;
         end
         
         function delete(obj)
-            if libisloaded(obj.libname)
-                CloseClockGate(obj);
-                unloadlibrary(obj.lib);
+            CloseClockGate(obj);
+            if obj.active
+                close(obj.dio);
             end
         end
 
         function OpenClockGate(obj)
-            obj.outputByte(obj.lpt1_port+2, bin2dec('00000110'));
+            if obj.active
+                putvalue(obj.dio.Line(1), 1);
+            end
         end
         
         function CloseClockGate(obj)
-            obj.outputByte(obj.lpt1_port+2, bin2dec('00000111'));
-        end
-        
-    end
-
-    methods (Access = private)
-        
-        function outputByte(obj, port, data)
-            calllib(obj.libname, 'DlPortWritePortUchar', port, data);
+            if obj.active
+                putvalue(obj.dio.Line(1), 0);
+            end
         end
         
     end
