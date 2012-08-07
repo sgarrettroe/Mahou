@@ -80,7 +80,7 @@ IO = IO_Interface;
 IO.CloseClockGate();
 
 Interferometer_Stage = PI_TranslationStage('COM3', 0.00015, 'editMotor1');
-FPAS_Initialize;
+%@@@FPAS_Initialize;
 
 % The Raw Data plot is the same for every method.
 hRawPlots(1) = plot(handles.axesRawData, scales.ch32, zeros(1, 32), 'r');
@@ -140,7 +140,7 @@ PARAMS.start  = str2double(get(handles.editStart, 'String'));
 PARAMS.stop   = str2double(get(handles.editStop, 'String'));
 PARAMS.speed  = str2double(get(handles.editSpeed, 'String'));
 
-FPAS_Initialize;          % FPAS Setup uses number of shots
+%@@@FPAS_Initialize;          % FPAS Setup uses number of shots
 method.InitializeData(handles);
 
 set(handles.pbGo, 'String', 'Stop', 'BackgroundColor', [1.0 0.0 0.0]);

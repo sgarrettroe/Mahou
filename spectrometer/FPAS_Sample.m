@@ -85,7 +85,7 @@ switch PARAMS.dataSource
                     %% extract array part and ext channels part
                     sample.data.pixels = double(data(1:FPAS.nPixels,:)); %the first 64 rows
                     sample.data.external = double(data((FPAS.nPixels+1):(FPAS.nPixels+FPAS.nExtInputs),:))./13107; %the last 16 rows divided by some magic number I don't understand to make volts?
-                    
+
                 % If in simulation mode, duplicate method 2
                 else
                     for ii=1:32
@@ -95,7 +95,7 @@ switch PARAMS.dataSource
                     sample.data.external = random('uniform', 0.0, 5.0, 16, PARAMS.nShots);
                 end
          end
-        
+
     %% Uniform Distribution
     case 1
         if phase==1
@@ -112,7 +112,7 @@ switch PARAMS.dataSource
             end
             sample.data.external = random('uniform', 0.0, 5.0, 16, PARAMS.nShots);
         end
-        
+
     %% Simulate matching sech^2 peaks with Gaussian noise on sample to test noise calculations
     case 3
         if phase==1
@@ -126,7 +126,7 @@ end
 
 %% Final processing for this sample
 if phase==1
-    sample .mean.pixels = mean(sample.data.pixels, 2);
+    sample.mean.pixels = mean(sample.data.pixels, 2);
     sample.mean.external = mean(sample.data.external, 2);
 
     sample.mOD = log10(sample.data.pixels([33:64],:)./sample.data.pixels([1:32],:))*1000;

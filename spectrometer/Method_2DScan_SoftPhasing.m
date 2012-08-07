@@ -40,7 +40,9 @@
             obj.plot_data = zeros(32, 32);
             obj.mean_data = zeros(32, 32);
             PARAMS.nShots = (PARAMS.stop-PARAMS.start)/PARAMS.speed;
-            PARAMS.binCount = ceil(PARAMS.stop-PARAMS.start)/PARAMS.binSize;
+            
+            % Bins must be power of 2 for FFT.
+            PARAMS.binCount = 1^ceil(log2(ceil(PARAMS.stop-PARAMS.start)/PARAMS.binSize));
             obj.bin = zeros(32, PARAMS.binCount)+2*obj.telemere;
         end
 
@@ -84,6 +86,13 @@
             drawnow;
         end
 
+        function Finalize(obj)
+            obj.plot_data = fft(obj.plot_data);
+            refreshdata(obj.hPlot, 'caller');
+            drawnow;
+            Interferometer_Stage.MoveTo(handles, PARAMS.start, 50, 0, 1);
+        end
+        
         function noise = GetNoise(obj)
             noise = obj.sample.abs_noise;
         end
@@ -163,11 +172,11 @@
 
         function processData(obj)
             global PARAMS;
-            
+
             % Put in bins.
             bins = zeros(32, PARAMS.binCount);
             counts = zeros(PARAMS.binCount);
-            partitions = PARAMS.start:PARAMS.binSize:PARAMS.stop;
+            partitions = PARAMS.start:((PARAMS.stop-PARAMS.start)/PARAMS.binCount):PARAMS.stop;
             for ii=1:PARAMS.nShots;
                index = last(find(partitions<=obj.sample.position(ii)));
                bins(:,index) = (bins(:,index)*counts(index)+obj.sample.data(:, kk))/(counts(index)+1);
@@ -181,6 +190,3 @@
 
     end
  end
-
-
-            
